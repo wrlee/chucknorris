@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>Chuck Norris is Great</title>
+		<style media="screen">
+			body {
+				background-color: lightgray;
+			}
+			.joke {
+				border: 1px solid darkgray;
+				background-color: #FFFFF0;
+				margin: 4px;
+				padding: 7px;
+				border-radius: 5px;
+				font-family: sans-serif;
+				display: inline-block;
+				width: 30%;
+				vertical-align: top;
+			}
+			.joke.nerdy {
+				background-color: #F0F0D0;
+			}
+			.joke.explicit {
+				background-color: #FFE0FE;
+			}
+			.joke .id {
+				display: none;
+			}
+			.joke .category {
+				font-style: italic;
+				font-size: 70%;
+				display: inline;
+			}
+			.joke .category::before {
+				content: '[';
+			}
+			.joke .category::after {
+				content: '] ';
+			}
+		</style>
+	</head>
+	<body>
+		<div id='app-main'/>
+		<!-- <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.0/jquery.min.js"></script> -->
+		<script src="https://unpkg.com/react@latest/dist/react.js"></script>
+		<script src="https://unpkg.com/react-dom@latest/dist/react-dom.js"></script>
+		<script src="https://unpkg.com/babel-standalone@6.15.0/babel.min.js"></script>
+		<script type="text/babel">
+			function timeout(delay) {
+				return new Promise( (resolve, reject) =>
+					setTimeout( resolve, delay )
+				)
+			} // timeout()
+
+			/**
+			 * @class Joke -
+			 */
+			function Joke(props) {
+//				console.log('Joke:', props)
+				let text=props.joke
+					.replace(/\.\.\./g,'\u2026') // Convert to ellipsis char (&hellip)
+					.replace(/'(re|ll) /g,'\u2019$1 ') // &rsquo
+					.replace(/(in|s)'([\. ])/g,'$1\u2019$2') // s' in' --> &rsquo
+					.replace(/'([std][ \.&])/g,'\u2019$1') // 's 't 'd --> &rsquo
+					.replace(/ '([0-9]{2})/g,' \u2019$1') // '09 --> '&rsquo
+					.replace(/'([^']*)'/g,'\u2018$1\u2019') // '...' --> &lsquo &rsquo
+					.replace(/--/g,'\u2013') // -- --> &ndash
+					.replace(/&quot;(.*?)&quot;/g,'\u201C$1\u201D') // "..." --> &ldquo &rdquo
+					.replace(/([0-9]+)\u2018(x[0-9]+)\u2019/g,' $1\'$2\'') // 8'x10' --> '
+					.replace(/ \?([^\?]*)\? /,' \u201C$1\u201D ') // ?...? --> &ldquo &rdquo
+					// Correct typos in icndb.com
+					.replace(/\?([st])/g,'\u2019$1') // ?s --> 's
+					.replace('Death and Taxes?','\u201CDeath and Taxes\u201D ')
+				let width=Math.floor(text.length * 100 / 40)
+				// let width=(Math.random() * 300) + 75
+				let style={width: width+'px'}
+				// let style={minWidth: Math.floor(text.length * 200 / 40)+'px'}
+				let categories=props.categories.join(' ')
+			   return (
+					<div className={'joke '+categories} style={style} key={props.id}>
+						<span className='id'>{props.id}</span>
+						<span className='text'>{text}</span>
+						<div className='categories'>
+							{props.categories.map(cat => (<span key={cat} className='category'>{cat}</span>))}
+						</div>
+					</div>
+				)
+			} // Joke.render()
+
+			/**
+			 * @class FetchJokes -
+			 */
+			class FetchJokes extends React.Component {
+				constructor(props) {
+					super(props)
+					this.state = {
+						data: new Map(),
+						stop: false,
+						processed: 0
+					}
+					this.addToList = this.addToList.bind(this)
+					this.catchError = this.catchError.bind(this)
+				}
+
+				catchError(err) {
+					this.setState({stop: true})
+					console.log('Caught Error:',err)
+				}
+
+				addToList(items) {
+//					console.log('addToList()', this.state.data);
+					let newList = new Map(this.state.data)
+					if (Array.isArray(items))
+					{
+						for (let elem of items) //if (elem.joke.search(/\?[a-zA-Z]/) >= 0)
+						{
+							this.setState((state) => ({processed: state.processed+1}))
+							newList.set(elem.id, elem)
+//							console.log(elem.joke)
+						}
+					}
+					else {
+						this.setState((state) => ({processed: state.processed+1}))
+						newList.set(items.id, items)
+//						console.log(items.joke)
+					}
+//					console.log(newList)
+					this.setState( {data: newList })
+				}
+
+				fetchData() {
+					fetch(this.props.src)
+						.then(response => {
+								console.log(response)
+								return response.json()
+							},
+					 	 		err => {
+//									console.log('fetch failed: ',err);
+									this.catchError(err)
+								}
+							)
+						.then(json => {
+//							console.log('then: ',typeof this.props.repeat,this.props.repeat)
+							this.addToList(json.value)
+							if ( (this.props.interval && typeof this.props.repeat === 'undefined')
+								  || (this.props.repeat === true
+									   || typeof this.props.repeat === 'number'
+										   && this.props.repeat > this.state.data.size) )
+								timeout((this.props.interval ? this.props.interval : 1)*1000)
+									.then(this.fetchData.bind(this))
+						})
+						.catch(this.catchError)
+				} // fetchData()
+
+				componentDidMount() {
+					// After DOM updated
+					console.log('componentDidMount()');
+					this.setState({stop: false})
+					this.fetchData()
+				}
+				render() {
+					let output=[];
+					this.state.data.forEach( elem => {
+//						console.log(elem)
+						this.maxid = this.maxid
+										? this.maxid < elem.id
+											? elem.id
+											: this.maxid
+										: elem.id
+						output.push(
+							<Joke key={elem.id} {...elem} />
+						)
+					})
+					return (
+						<div>
+							{output}
+						</div>
+					)
+				} // FetchJokes.render()
+			} // FetchJokes
+
+			ReactDOM.render(
+				<div className='container-fluid'>
+					<FetchJokes src='http://api.icndb.com/jokes/random/1'
+						repeat={100}
+						interval={2.5}
+					/>
+					<div id='fail' style={{color:'red'}}></div>
+				</div>
+				, document.getElementById('app-main')
+			)
+		</script>
+	</body>
+</html>
