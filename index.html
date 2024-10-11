@@ -43,13 +43,13 @@
 	<body>
 		<div id='app-main'/>
 		<!-- <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.0/jquery.min.js"></script> -->
-		<!-- <script src="https://unpkg.com/react@latest/dist/react.js"></script> -->
-		<!-- <script src="https://unpkg.com/react-dom@latest/dist/react-dom.js"></script> -->
-		<script src="https://cdnjs.cloudflare.com/ajax/libs/react/16.2.0/umd/react.production.min.js"></script>
-		<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/16.2.0/umd/react-dom.production.min.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/react/16.2.0/umd/react.development.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/16.2.0/umd/react-dom.development.js"></script>
 
-		<script src="https://unpkg.com/babel-standalone@6.15.0/babel.min.js"></script>
+		<!-- <script src="https://unpkg.com/babel-standalone@6.15.0/babel.min.js"></script> -->
+		<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 		<script type="text/babel">
+
 			function timeout(delay) {
 				return new Promise( (resolve, reject) =>
 					setTimeout( resolve, delay )
@@ -60,8 +60,8 @@
 			 * @class Joke -
 			 */
 			function Joke(props) {
-//				console.log('Joke:', props)
-				let text=props.joke
+				console.log(props.value, props.categories.length ? props.categories : '')
+				let text=props.value
 					.replace(/\.\.\./g,'\u2026') // Convert to ellipsis char (&hellip)
 					.replace(/'(re|ll) /g,'\u2019$1 ') // &rsquo
 					.replace(/(in|s)'([\. ])/g,'$1\u2019$2') // s' in' --> &rsquo
@@ -98,58 +98,49 @@
 				constructor(props) {
 					super(props)
 					this.state = {
-						data: new Map(),
+						data: [],
 						stop: false,
-						processed: 0
 					}
 					this.addToList = this.addToList.bind(this)
 					this.catchError = this.catchError.bind(this)
 				}
 
 				catchError(err) {
+					console.error(err)
 					this.setState({stop: true})
-					console.log('Caught Error:',err)
 				}
 
 				addToList(items) {
-//					console.log('addToList()', this.state.data);
-					let newList = new Map(this.state.data)
+//					console.log(`addToList()`, items);
 					if (Array.isArray(items))
 					{
-						for (let elem of items) //if (elem.joke.search(/\?[a-zA-Z]/) >= 0)
-						{
-							this.setState((state) => ({processed: state.processed+1}))
-							newList.set(elem.id, elem)
-//							console.log(elem.joke)
-						}
+						this.setState((state) => ({data: data.merge(items)}))
 					}
 					else {
-						this.setState((state) => ({processed: state.processed+1}))
-						newList.set(items.id, items)
-//						console.log(items.joke)
+						this.setState((state) => {
+							state.data.push(items)
+							return {data: state.data}	
+						})
 					}
-//					console.log(newList)
-					this.setState( {data: newList })
 				}
 
 				fetchData() {
 					fetch(this.props.src)
 						.then(response => {
-								console.log(response)
 								return response.json()
 							},
 					 	 		err => {
-//									console.log('fetch failed: ',err);
+									console.error('fetch failed: ',err);
 									this.catchError(err)
 								}
 							)
 						.then(json => {
-//							console.log('then: ',typeof this.props.repeat,this.props.repeat)
-							this.addToList(json.value)
-							if ( (this.props.interval && typeof this.props.repeat === 'undefined')
-								  || (this.props.repeat === true
-									   || typeof this.props.repeat === 'number'
-										   && this.props.repeat > this.state.data.size) )
+//							console.log('then: ',json)
+							this.addToList(json)
+
+							if ( this.props.interval && typeof this.props.repeat === 'undefined'
+								 || this.props.repeat === true
+								 || typeof this.props.repeat === 'number' && this.props.repeat > this.state.data.length )
 								timeout((this.props.interval ? this.props.interval : 1)*1000)
 									.then(this.fetchData.bind(this))
 						})
@@ -158,19 +149,12 @@
 
 				componentDidMount() {
 					// After DOM updated
-					console.log('componentDidMount()');
 					this.setState({stop: false})
 					this.fetchData()
 				}
 				render() {
 					let output=[];
 					this.state.data.forEach( elem => {
-//						console.log(elem)
-						this.maxid = this.maxid
-										? this.maxid < elem.id
-											? elem.id
-											: this.maxid
-										: elem.id
 						output.push(
 							<Joke key={elem.id} {...elem} />
 						)
@@ -185,7 +169,7 @@
 
 			ReactDOM.render(
 				<div className='container-fluid'>
-					<FetchJokes src='http://api.icndb.com/jokes/random/1'
+					<FetchJokes src='http://api.chucknorris.io/jokes/random/'
 						repeat={100}
 						interval={2.5}
 					/>
